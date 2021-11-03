@@ -3,20 +3,24 @@
     <h2>欢迎来到我的美食空间</h2>
     <div class="user-info">
       <div class="user-avatar">
-        <img src="" alt="">
+        <img :src="userInfo.avatar" alt="">
       </div>
       <div class="user-main">
-        <h1></h1>
+        <h1>{{userInfo.name}}</h1>
+        <span>{{userInfo.sign}}</span><br/>
         <span class="info">
-          <em>加入美食杰</em>
+          <em>{{userInfo.createdAt}}加入美食杰</em>
           |
-          <router-link to="" >编辑个人资料</router-link>
+          <router-link :to="{name:'edit'}" v-if="isOwner">编辑个人资料</router-link>
         </span>
-        <div class="tools" >
+        <div class="tools" v-if="!isOwner">
           <!-- follow-at  no-follow-at-->
-				  <a href="javascript:;" class="follow-at"
+				  <a href="javascript:;" 
+          class="follow-at"
+          :class="{'no-follow-at':userInfo.isFollowing}"
+          @click="toggleHandler"
           >
-            关注
+            {{userInfo.isFollowing?'已关注':'关注'}}
           </a>
         </div>
       </div>
@@ -25,32 +29,32 @@
         <li>
           <div>
             <span>关注</span>
-            <strong>77</strong>
+            <strong>{{userInfo.follows_len}}</strong>
           </div>
         </li>
         <li>
           <div>
             <span>粉丝</span>
-            <strong>44</strong>
+            <strong>{{userInfo.follows_len}}</strong>
           </div>
         </li>
         <li>
           <div>
             <span>收藏</span>
-            <strong>11</strong>
+            <strong>{{userInfo.collections_len}}</strong>
           </div>
         </li>
         <li>
           <div>
             <span>发布菜谱</span>
-            <strong>55</strong>
+            <strong>{{userInfo.work_menus_len}}</strong>
           </div>
         </li>
       </ul>
     </div>
 
     <!-- v-model="activeName" -->
-    <el-tabs class="user-nav">
+    <el-tabs class="user-nav" v-model="activeName" @tab-click="tabClickHandler">
       <el-tab-pane label="作品" name="works"></el-tab-pane>
       <el-tab-pane label="粉丝" name="fans"></el-tab-pane>
       <el-tab-pane label="关注" name="following"></el-tab-pane>
@@ -62,26 +66,84 @@
       <!-- <menu-card :margin-left="13"></menu-card> -->
       <!-- 粉丝 & 关注 布局 -->
       <!-- <Fans></Fans> -->
-      <router-view ></router-view>
+      <router-view :info="list" :activeName="activeName"></router-view>
     </div>
 
   </div>
 </template>
 <script>
 import {userInfo, toggleFollowing, getMenus, following, fans, collection} from '@/service/api';
-
+const getOtherInfo = {
+  async works(params){
+    let data = (await getMenus(params)).data;
+    data.flag='works'
+    return data;
+  },
+  async following(params){
+    let data = (await following(params)).data;
+    data.flag='following'
+    return data;
+  },
+  async fans(params){
+    let data = (await fans(params)).data;
+    data.flag='fans'
+    return data;
+  },
+  async collection(params){
+    let data = (await collection(params)).data;
+    data.flag='collection'
+    return data;
+  }
+}
 export default {
   name: 'Space',
   data(){
     return {
-
+      userInfo:{},
+      isOwner:false,
+      activeName:'works',
+      list:[]
     }
   },
   watch:{
-
+    $route:{
+      async handler(){
+        let {userId} = this.$route.query;
+        this.isOwner = !userId || userId === this.$store.state.userInfo.userId
+        if(this.isOwner){
+          this.userInfo = this.$store.state.userInfo
+        }else{
+          const {data}= await userInfo({userId})
+          this.userInfo=data
+        }
+        // console.log(this.userInfo);
+        this.activeName = this.$route.name;
+        this.getInfo();
+      },
+      immediate:true
+    }
   },
   methods:{
+    async toggleHandler(){
+      const {data} =await toggleFollowing({followUserId:this.userInfo.userId});
+      this.userInfo = data
+      // console.log(this.userInfo);
+    },
+    tabClickHandler(){
+      // this.list=[];
+      this.$router.push({
+        name:this.activeName,
+        query:{
+          ...this.$route.query
+        }
+      })
+    },
+    async getInfo(){
+      let data = await getOtherInfo[this.activeName]({userId:this.userInfo.userId})
+      this.list = data.list
+      // console.log(this.list)
 
+    }
   }
 }
 </script>

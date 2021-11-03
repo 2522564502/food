@@ -1,6 +1,5 @@
 <template>
   <div class="login-page">
-
     <el-tabs v-model="activeName" type="card">
       <el-tab-pane label="登录" name="login">
         <login></login>
